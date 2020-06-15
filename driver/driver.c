@@ -28,6 +28,7 @@
 #include <pthread.h>
 #include <syslog.h>
 
+#include <getopt.h>
 
 
 #define BUFFER_SIZE 65536
@@ -368,10 +369,20 @@ int findsync(int sd){
 	return -1;
 }
 
+int printhelp(){
+	printf ("* Syntax:         driver [option] [dir] [location]\n*\n* dir  - directory name to write files default is ./"
+			"\n* location - recording location added to filenames"
+			"\n* option:"
+			"\n* 	-r - real-time mode starting whd_rt.sh"
+			"\n*	-h - print this help\n");
+	return 0;
+}
+
 int main(int argc, char * argv[]) {
     int input_fd;
     int output_fd;
     int raw_fd=0;
+    int frame_fd=0;
 
     time_t lt;
     struct tm ltime;
@@ -398,26 +409,34 @@ int main(int argc, char * argv[]) {
 	struct  protoent *ptrp;    /* point to a protocol table entry     */
 	struct  sockaddr_in sad;   /* structure to hold sender's address  */
 	int ec = 0;
-
+	int realtime = 0;
+	int opt;
     FILE * propsfile;
 	
     av2 = (char*)defav2;
     dirname = DIR_NAME;
     
-    LOG ("*** VR2 filewriter V2.1 started ***\n");
-    signal (SIGCHLD, SIG_IGN);
-    
-    if (argc > 1 )
-    {
-    	if ( (strcmp(argv[1],"--help") == 0) || (strcmp(argv[1],"-h") == 0) )
-    	{
-    		printf ("* Syntax:         driver [ dir ]\n*\n* dir  - directory name to write files default is ./\n*\n");
+    LOG ("*** VR2 filewriter V6 started ***\n");
+//    signal (SIGCHLD, SIG_IGN);
+
+    while((opt = getopt(argc,argv,"rh")) != -1){
+    	switch(opt){
+    	case 'r':
+    		LOG("real-time mode on");
+    		realtime = 1;
+    		break;
+    	case 'h':
+    		printhelp();
     		return 0;
+    		break;
     	}
-    	dirname = argv[1];
     }
-    if (argc > 2){
-		av2 = argv[2];
+
+    if (optind < argc ){
+    	dirname = argv[optind++];
+    }
+    if (argc < optind){
+		av2 = argv[optind++];
     }
     lt = time (NULL);
     pltime = localtime (&lt);
@@ -425,49 +444,39 @@ int main(int argc, char * argv[]) {
     strftime (filename, 255, "%Y-%m-%dUT%H:%M:%S", pltime);
     snprintf (file_name, 1024, "%s.%s.vr2.store.log", filename,av2);
 	
-	if ( (logfile = fopen(file_name, "a+")) == NULL )
-	{
+	if ( (logfile = fopen(file_name, "a+")) == NULL ){
 		LOG("Error opening logfile");
 		return -1;
 	}
 
-	if ( (propsfile = fopen("vr2.conf", "rb")) != NULL)
-	{
+	if ( (propsfile = fopen("vr2.conf", "rb")) != NULL){
  		clearerr(propsfile);
- 		while (!feof(propsfile))
- 		{
+ 		while (!feof(propsfile)){
  			fscanf( propsfile, "%[^\n]\n", (char*)&dummy );
- 			if (dummy[0] != '#')
- 			{
-       			if (sscanf( (char *)&dummy, "serial_port %[^\n]\n", (char*)&serial_fn ) != 0)
-       			{
+ 			if (dummy[0] != '#'){
+       			if (sscanf( (char *)&dummy, "serial_port %[^\n]\n", (char*)&serial_fn ) != 0){
 		       		LOG("serial_port %s\n", serial_fn);
 		      	 	break;
        			}
  			}
  		}
- 		if (feof(propsfile))
- 		{
+ 		if (feof(propsfile)){
 			perror ("Error: missing parameter serial_port from vr2.conf\n ");
 			serial_close(&serial_fd);
 			return 1; 			
  		}       	
  		fseek(propsfile, 0, SEEK_SET);
  		clearerr(propsfile);
- 		while (!feof(propsfile))
- 		{
+ 		while (!feof(propsfile)){
  			fscanf( propsfile, "%[^\n]\n", (char*)&dummy );
- 			if (dummy[0] != '#')
- 			{
-	 			if (sscanf( (char *)&dummy, "channel %[^\n]\n", (char*)&channel ) != 0)
- 				{
+ 			if (dummy[0] != '#'){
+	 			if (sscanf( (char *)&dummy, "channel %[^\n]\n", (char*)&channel ) != 0){
         	      	LOG("channel %s\n", channel);
             	  	break;
  				}
  			}
  		}
- 		if (feof(propsfile))
- 		{
+ 		if (feof(propsfile)){
 			perror ("Error: missing parameter chanel from vr2.conf\n ");
 			serial_close(&serial_fd);
 			return 1; 			
@@ -476,13 +485,10 @@ int main(int argc, char * argv[]) {
  		fseek(propsfile, 0, SEEK_SET);
  		clearerr(propsfile);
 
- 		while (!feof(propsfile))
- 		{
+ 		while (!feof(propsfile)){
  			fscanf( propsfile, "%[^\n]\n", (char*)&dummy );
- 			if (dummy[0] != '#')
- 			{
-		       	if ( sscanf( (char *)&dummy , "divider %d\n", &divider ) != 0)
-		       	{
+ 			if (dummy[0] != '#'){
+		       	if ( sscanf( (char *)&dummy , "divider %d\n", &divider ) != 0){
 		       		if ( (divider > 15) || (divider < 0) ){
 		       			LOG("wrong divider setting, divider set to 3\n");
 		       			divider = 3;
@@ -492,8 +498,7 @@ int main(int argc, char * argv[]) {
 	       		}
  			}
  		}
-  		if (feof(propsfile))
- 		{
+  		if (feof(propsfile)){
 			perror ("Error: missing parameter divider from vr2.conf\n ");
 			serial_close(&serial_fd);
 			return 1; 			
@@ -502,20 +507,16 @@ int main(int argc, char * argv[]) {
  		fseek(propsfile, 0, SEEK_SET);
  		clearerr(propsfile);
 
- 		while (!feof(propsfile))
- 		{
+ 		while (!feof(propsfile)){
  			fscanf( propsfile, "%[^\n]\n", (char*)&dummy );
- 			if (dummy[0] != '#')
- 			{
-      			if (sscanf( (char *)&dummy, "hostname %[^\n]\n", (char*)&hostname ) != 0)
-		       	{
+ 			if (dummy[0] != '#'){
+      			if (sscanf( (char *)&dummy, "hostname %[^\n]\n", (char*)&hostname ) != 0){
  			       	LOG("hostname %s\n", hostname);
  		    	   	break;
 	       		}
  			}
  		}
-  		if (feof(propsfile))
- 		{
+  		if (feof(propsfile)){
 			perror ("Error: missing parameter hostname from vr2.conf\n ");
 			serial_close(&serial_fd);
 			return 1; 			
@@ -524,34 +525,36 @@ int main(int argc, char * argv[]) {
 		fseek(propsfile, 0, SEEK_SET);
  		clearerr(propsfile);
 
- 		while (!feof(propsfile))
- 		{
+ 		while (!feof(propsfile)){
  			fscanf( propsfile, "%[^\n]\n", (char*)&dummy );
- 			if (dummy[0] != '#')
- 			{
-      			if (sscanf( (char *)&dummy, "raw %d\n", &raw ) != 0)
-		       	{
+ 			if (dummy[0] != '#'){
+      			if (sscanf( (char *)&dummy, "raw %d\n", &raw ) != 0){
  			       	LOG("raw %d\n", raw);
  		    	   	break;
 	       		}
  			}
  		}
-  		if (feof(propsfile))
- 		{
- 			raw = 0;
+  		if (feof(propsfile)){
+ 			raw = 1;
  		}      
       
     	fclose (propsfile);
     	
-	}
-	else
+	} else
 		return -1;
 
-   	if ( raw > 0){
+   	if ( (raw&0x2) > 0){
 		mkfifo("./raw_data",S_IWUSR | S_IRUSR);
    		raw_fd = open("./raw_data", O_CREAT | O_TRUNC | O_RDWR | O_NONBLOCK, 0666 );
    		if (raw_fd < 0)
-   			raw = 0;
+   			raw &= ~0x02;
+   	}
+
+   	if ( (raw&0x4) > 0){
+		mkfifo("./frame_data",S_IWUSR | S_IRUSR);
+   		frame_fd = open("./frame_data", O_CREAT | O_TRUNC | O_RDWR | O_NONBLOCK, 0666 );
+   		if (frame_fd < 0)
+   			raw &= ~0x04;
    	}
 
     lt = time (NULL);
@@ -570,16 +573,19 @@ int main(int argc, char * argv[]) {
 		return 1;
     }
 
-    // whd_rt indiitasa eloszor
-    // "whd_rt.sh file_name"
-    //
-    if ( 0 == fork() ) {
-    // elforkolt child process
-         char command_buf [64];
-         snprintf(command_buf,sizeof(command_buf), "./whd_rt.sh %s.%s.vr2", filename,av2);
-         system(command_buf);
-         return 0; // child process vege
-     }
+    if (realtime==1){
+        // whd_rt start at the first time
+        // "whd_rt.sh file_name"
+    	if ( 0 == fork() ) {
+    		// forked child process
+    		signal (SIGCHLD, SIG_DFL);
+    		char arg1buf [64];
+    		snprintf(arg1buf,sizeof(arg1buf),"%s.%s.vr2", filename,av2);
+    		execl("./whd_rt.sh","whd_rt.sh",arg1buf,NULL);
+    		perror("./whd_rt.sh exec error");
+    		exit(-1);
+    	}
+    }
     
     RUN = 1;
 
@@ -701,15 +707,18 @@ l_connect:
 				break;
 	    		}
 
-// whd_rt inditasa minden kerek oraban
-// "whd_rt.sh file_name"
-//
-		        if ( 0 == fork() ) {
-// elforkolt child process
-		            char command_buf [64];
-		            snprintf(command_buf,sizeof(command_buf), "./whd_rt.sh %s.%s.vr2", filename,av2);
-		            system(command_buf);
-		            return 0; // child process vege
+			    if (realtime==1){
+			    	// whd_rt start in every hour
+			    	// "whd_rt.sh file_name"
+			    	if ( 0 == fork() ) {
+			    		// forked child process
+			    		signal (SIGCHLD, SIG_DFL);
+			    		char arg1buf [64];
+			    		snprintf(arg1buf,sizeof(arg1buf),"%s.%s.vr2", filename,av2);
+			    		execl("./whd_rt.sh","whd_rt.sh",arg1buf,NULL);
+			    		perror("./whd_rt.sh exec error");
+			    		exit(-1);
+			    	}
 		        }
 			}
 			
@@ -777,10 +786,14 @@ l_connect:
 					goto l_socket;
 				}
 				
-				if (raw != 2)
-					write( output_fd, &frame, 8206 );
-				if ((raw == 1) || (raw == 2)){
+				if ((raw&0x01) != 0){
+					write( output_fd, &frame, 8206);
+				}
+				if ((raw&0x02) != 0){
 					write (raw_fd, &frame.data, 8192);
+				}
+				if ((raw&0x04) != 0){
+					write( frame_fd, &frame, 8206);
 				}
 			}
 		}
@@ -790,8 +803,12 @@ l_connect:
 	serial_close(&serial_fd);
     close (input_fd);
     close (output_fd);
-    if (raw_fd>0)
+    if (raw_fd>0){
     	close (raw_fd);
-	fclose(logfile);
+    }
+    if (frame_fd>0){
+    	close (frame_fd);
+    }
+    fclose(logfile);
 	return 0;
 }
