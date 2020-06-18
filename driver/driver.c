@@ -380,7 +380,7 @@ int printhelp(){
 
 int main(int argc, char * argv[]) {
     int input_fd;
-    int output_fd;
+    int output_fd=-1;
     int raw_fd=0;
     int frame_fd=0;
 
@@ -422,7 +422,6 @@ int main(int argc, char * argv[]) {
     while((opt = getopt(argc,argv,"rh")) != -1){
     	switch(opt){
     	case 'r':
-    		LOG("real-time mode on");
     		realtime = 1;
     		break;
     	case 'h':
@@ -431,13 +430,18 @@ int main(int argc, char * argv[]) {
     		break;
     	}
     }
+    if (realtime==1)
+    	LOG("real-time mode on\n");
+    else
+    	LOG("real-time mode off\n");
 
-    if (optind < argc ){
+    if (optind < argc){
     	dirname = argv[optind++];
     }
-    if (argc < optind){
+    if (optind < argc){
 		av2 = argv[optind++];
     }
+
     lt = time (NULL);
     pltime = localtime (&lt);
 //    strftime (filename, 255, "%Y_%m_%d_%H_%M_%S", pltime);
@@ -540,8 +544,12 @@ int main(int argc, char * argv[]) {
       
     	fclose (propsfile);
     	
-	} else
+	} else {
+		perror ("Error: missing parameter file vr2.conf\n ");
 		return -1;
+	}
+   	LOG("data dir: %s\n", dirname);
+   	LOG("location: %s\n", av2);
 
    	if ( (raw&0x2) > 0){
 		mkfifo("./raw_data",S_IWUSR | S_IRUSR);
@@ -565,12 +573,13 @@ int main(int argc, char * argv[]) {
 
     today = pltime->tm_hour;
 //    LOG ("pltime->tm_min = %d\n", pltime->tm_min);
+    if (raw&0x01 != 0){
+    	output_fd = open (file_name, O_RDWR | O_NOCTTY | O_CREAT | O_APPEND | O_LARGEFILE, 0666);
     
-    output_fd = open (file_name, O_RDWR | O_NOCTTY | O_CREAT | O_APPEND | O_LARGEFILE, 0666);
-    
-    if (output_fd < 0) {
-		perror ("Error: opening output file\n");
-		return 1;
+    	if (output_fd < 0) {
+    		perror ("Error: opening output file\n");
+    		return 1;
+    	}
     }
 
     if (realtime==1){
@@ -693,19 +702,20 @@ l_connect:
 			zz = 0;
 			if (today != pltime->tm_hour)
 			{
-		    	close (output_fd);
-		        strftime (filename, 255, "%Y-%m-%dUT%H:%M:%S", pltime);
-    			snprintf (file_name, 1024, "%s//%s.%s.vr2", dirname, filename,av2);
- 			    today = pltime->tm_hour;
+				if (output_fd>0){
+					close (output_fd);
+		        	strftime (filename, 255, "%Y-%m-%dUT%H:%M:%S", pltime);
+		        	snprintf (file_name, 1024, "%s//%s.%s.vr2", dirname, filename,av2);
+		        	today = pltime->tm_hour;
 	    
-	 		   	output_fd = open (file_name, O_RDWR | O_NOCTTY | O_CREAT | O_APPEND | O_LARGEFILE, 0666);
+		        	output_fd = open (file_name, O_RDWR | O_NOCTTY | O_CREAT | O_APPEND | O_LARGEFILE, 0666);
 	    
-			    if (output_fd < 0)
-			    {
-				perror ("Error: opening output file\n");
-				//return 1;
-				break;
-	    		}
+		        	if (output_fd < 0){
+		        		perror ("Error: opening output file\n");
+		        		//return 1;
+		        		break;
+		        	}
+				}
 
 			    if (realtime==1){
 			    	// whd_rt start in every hour
@@ -802,7 +812,8 @@ l_connect:
     
 	serial_close(&serial_fd);
     close (input_fd);
-    close (output_fd);
+    if (output_fd>0)
+    	close (output_fd);
     if (raw_fd>0){
     	close (raw_fd);
     }
