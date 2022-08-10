@@ -86,7 +86,7 @@ void restart_vr2(int serial_fd) {
     struct tm * pltime = &ltime;
 
 	lt = time (NULL);
-	pltime = localtime (&lt);
+	pltime = gmtime (&lt);
 
 	ioctl (serial_fd, TIOCMGET, &dummy);
 	dummy |= TIOCM_RTS;
@@ -204,7 +204,7 @@ l_cconnect:
 
     
     clt = time (NULL);
-   	cpltime = localtime (&clt);
+   	cpltime = gmtime (&clt);
     strftime (cfilename, 255, "%Y-%m-%dUT%H:%M:%S", cpltime);
     snprintf (cfile_name, 1024, "%s.%s.vr2.commanddata.log", cfilename,av2);
     output_fd = open (cfile_name, O_RDWR | O_NOCTTY | O_CREAT | O_APPEND, 0666);
@@ -215,7 +215,7 @@ l_cconnect:
    	}
    	
     clt = time (NULL);
-    cpltime = localtime (&clt);
+    cpltime = gmtime (&clt);
     strftime (cfilename, 255, "%Y-%m-%dUT%H:%M:%S", cpltime);
     snprintf (cfile_name, 1024, "%s.%s.vr2.commanderror.log", cfilename, av2);
 
@@ -274,8 +274,8 @@ read_more_comreply:
 			if (disp == 0){
 				disp++;
 			    clt = time (NULL);
-   				cpltime = localtime (&clt);
-				fprintf (slogfile,"Error reading from command port: %04d.%02d.%02d. %02d:%02d:%02d\n", 1900+cpltime->tm_year, cpltime->tm_mon+1, cpltime->tm_mday, cpltime->tm_hour, cpltime->tm_min, cpltime->tm_sec);
+   				cpltime = gmtime (&clt);
+				fprintf (slogfile,"Error reading from command port: %04d.%02d.%02d. UT %02d:%02d:%02d\n", 1900+cpltime->tm_year, cpltime->tm_mon+1, cpltime->tm_mday, cpltime->tm_hour, cpltime->tm_min, cpltime->tm_sec);
 				fflush(slogfile);
 				close(command_fd);
 				sleep(2);
@@ -443,7 +443,7 @@ int main(int argc, char * argv[]) {
     }
 
     lt = time (NULL);
-    pltime = localtime (&lt);
+    pltime = gmtime (&lt);
 //    strftime (filename, 255, "%Y_%m_%d_%H_%M_%S", pltime);
     strftime (filename, 255, "%Y-%m-%dUT%H:%M:%S", pltime);
     snprintf (file_name, 1024, "%s.%s.vr2.store.log", filename,av2);
@@ -566,14 +566,14 @@ int main(int argc, char * argv[]) {
    	}
 
     lt = time (NULL);
-    pltime = localtime (&lt);
+    pltime = gmtime (&lt);
 //    strftime (filename, 255, "%Y_%m_%d_%H_%M_%S", pltime);
     strftime (filename, 255, "%Y-%m-%dUT%H:%M:%S", pltime);
     snprintf (file_name, 1024, "%s//%s.%s.vr2", dirname, filename,av2);
 
     today = pltime->tm_hour;
 //    LOG ("pltime->tm_min = %d\n", pltime->tm_min);
-    if (raw&0x01 != 0){
+    if ( (raw&0x01) != 0){
     	output_fd = open (file_name, O_RDWR | O_NOCTTY | O_CREAT | O_APPEND | O_LARGEFILE, 0666);
     
     	if (output_fd < 0) {
@@ -647,8 +647,8 @@ l_connect:
 // halozat connect
 
 	lt = time (NULL);
-	pltime = localtime (&lt);
-	fprintf (logfile,"Connection established at %04d.%02d.%02d. %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+	pltime = gmtime (&lt);
+	fprintf (logfile,"Connection established at %04d.%02d.%02d. UT %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 	fflush(logfile);
 	LOG("Connection established at %04d.%02d.%02d. %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 
@@ -656,7 +656,7 @@ l_connect:
 	err_dispd = 0;
     while (RUN) {
 		lt = time (NULL);
-		pltime = localtime (&lt);
+		pltime = gmtime (&lt);
 	
 //    	LOG ("pltime->tm_min = %d, today = %d\n", pltime->tm_min, today);
 		
@@ -672,8 +672,8 @@ l_connect:
 //		LOG ("%d\n", n);
 		if (n < 0) {
 			perror ("Error: select failed");
-			LOG ("Connection terminated by VR2  %04d.%02d.%02d. %02d:%02d:%02d at select\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
-			fprintf (logfile,"Connection terminated by VR2  %04d.%02d.%02d. %02d:%02d:%02d at select\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+			LOG ("Connection terminated by VR2  %04d.%02d.%02d. UT %02d:%02d:%02d at select\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+			fprintf (logfile,"Connection terminated by VR2  %04d.%02d.%02d. UT %02d:%02d:%02d at select\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 			fflush(logfile);
 			today = -1;
 			close(input_fd);
@@ -684,9 +684,9 @@ l_connect:
 //			puts("Timeout: select2");
 			if (zz > 2) {
 				if (err_dispd == 0) {
-					fprintf (logfile,"No incoming data in last 2s  %04d.%02d.%02d. %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+					fprintf (logfile,"No incoming data in last 2s  %04d.%02d.%02d. UT %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 					fflush(logfile);
-					LOG("No incoming data in last 2s  %04d.%0d.%02d. %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+					LOG("No incoming data in last 2s  %04d.%0d.%02d. UT %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 					err_dispd++;
 					restart_vr2(serial_fd);
 				}
@@ -735,9 +735,9 @@ l_connect:
 			
 			if (err_dispd == 1) {
 				err_dispd = 0;
-				fprintf (logfile,"Data receiving restarted at  %04d.%02d.%02d. %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+				fprintf (logfile,"Data receiving restarted at  %04d.%02d.%02d. UT %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 				fflush(logfile);
-				LOG("Data receiving restarted at  %04d.%02d.%02d. %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+				LOG("Data receiving restarted at  %04d.%02d.%02d. UT %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 			}
 
 			
@@ -747,16 +747,16 @@ l_connect:
 					close(input_fd);
 					restart_cmd = 1;
 					today = -1;
-					LOG ("Connection terminated by VR2  %04d.%02d.%02d. %02d:%02d:%02d at findsync\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
-					fprintf (logfile,"Connection terminated by VR2  %04d.%02d.%02d. %02d:%02d:%02d at findsync\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+					LOG ("Connection terminated by VR2  %04d.%02d.%02d. UT %02d:%02d:%02d at findsync\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+					fprintf (logfile,"Connection terminated by VR2  %04d.%02d.%02d. UT %02d:%02d:%02d at findsync\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 					fflush(logfile);
 					goto l_socket;
 				}
 				if (n==0) {
 					if (err_dispd == 0) {
-						fprintf (logfile,"No incoming data in last 2s  %04d.%02d.%02d. %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+						fprintf (logfile,"No incoming data in last 2s  %04d.%02d.%02d. UT %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 						fflush(logfile);
-						LOG("No incoming data in last 2s  %04d.%0d.%02d. %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+						LOG("No incoming data in last 2s  %04d.%0d.%02d. UT %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 						err_dispd = 1;
 					}
 					restart_vr2(serial_fd);
@@ -781,15 +781,15 @@ l_connect:
 					today = -1;
 					restart_vr2(serial_fd);
 					if (n<0){
-						LOG ("Connection terminated by VR2  %04d.%02d.%02d. %02d:%02d:%02d at recv\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
-						fprintf (logfile,"Connection terminated by VR2  %04d.%02d.%02d. %02d:%02d:%02d at recv\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+						LOG ("Connection terminated by VR2  %04d.%02d.%02d. UT %02d:%02d:%02d at recv\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+						fprintf (logfile,"Connection terminated by VR2  %04d.%02d.%02d. UT %02d:%02d:%02d at recv\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 						fflush(logfile);
 					}
 					if (n==0){
 						if (err_dispd == 0) {
-							fprintf (logfile,"No incoming data in last 2s  %04d.%02d.%02d. %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+							fprintf (logfile,"No incoming data in last 2s  %04d.%02d.%02d. UT %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 							fflush(logfile);
-							LOG("No incoming data in last 2s  %04d.%0d.%02d. %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
+							LOG("No incoming data in last 2s  %04d.%0d.%02d. UT %02d:%02d:%02d\n", 1900+pltime->tm_year, pltime->tm_mon+1, pltime->tm_mday, pltime->tm_hour, pltime->tm_min, pltime->tm_sec);
 							err_dispd = 1;
 						}
 					}
